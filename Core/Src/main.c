@@ -26,7 +26,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdlib.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +67,7 @@
 
 
   #define numLEDs 5
-  typedef struct{
+  /*typedef struct{
 
     uint8_t numLED;// = numLEDs;
     uint8_t LEDData[numLEDs][3];
@@ -76,9 +76,22 @@
     uint32_t Channel;
     uint8_t PWM_BUSY;
 
-  }LEDArray;
+  }LEDArray;//*/
  
+ typedef struct{
+
+    uint8_t numLED;// = numLEDs;
+    uint8_t *LEDData;
+    uint32_t *PWMdata;
+    TIM_HandleTypeDef *htim;
+    uint32_t Channel;
+    uint8_t PWM_BUSY;
+
+  }LEDArray;
   LEDArray Array1;
+
+
+  
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -148,9 +161,11 @@ int main(void)
 
   WS2812_PWM_ONE  = WS2812_PWM_ONE_PER*TIM1->ARR/100;
   WS2812_PWM_ZERO = WS2812_PWM_ZERO_PER*TIM1->ARR/100;
- 
- 
+  
+
   Array1.numLED = numLEDs;
+  Array1.LEDData = malloc(Array1.numLED*3*sizeof(uint8_t));
+  Array1.PWMdata = malloc(Array1.numLED*24*sizeof(uint32_t));
   Array1.htim = &htim2;
   Array1.Channel = TIM_CHANNEL_1;
   Array1.PWM_BUSY = 0;
@@ -171,6 +186,12 @@ int main(void)
     SetLED(&Array1,2,0,0,50);
     SetLED(&Array1,3,50,50,50);
     SetLED(&Array1,4,0,0,0);
+
+   /*SetLED(&Array1,0,255,255,255);
+    SetLED(&Array1,1,255,255,255);
+    SetLED(&Array1,2,255,255,255);
+    SetLED(&Array1,3,255,255,255);
+    SetLED(&Array1,4,255,255,255);//*/
 
     if(!Array1.PWM_BUSY){
      UpdateLEDs(&Array1); 
@@ -240,18 +261,18 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
   Array1.PWM_BUSY=0;
 }
 
-
 void SetLED(LEDArray *LED,uint8_t pos, uint8_t R,uint8_t G, uint8_t B){
 
   if( 0 <= pos && pos < LED->numLED){
     
-    LED->LEDData[pos][0]= G;
-    LED->LEDData[pos][1]= R;
-    LED->LEDData[pos][2]= B;
+    LED->LEDData[pos*3 ]= G ;//+R<<8+B<<16;
+    LED->LEDData[pos*3 +1]= R;
+    LED->LEDData[pos*3 +2]= B;
 
   }
 
 }
+
 
 void UpdateLEDs(LEDArray *LED){
 
@@ -259,11 +280,11 @@ void UpdateLEDs(LEDArray *LED){
   uint16_t index=0;
   //PWMdata = {0};
 
-  for(int i=0; i < LED->numLED; i++){
-    
+  for(int i=0; i < LED->numLED; i++){  
+   
     for(int j = 0 ;j<3 ; j++ ){
 
-      bitState = LED->LEDData[i][j];       
+      bitState = LED->LEDData[i*3+j];       
 
       for(int k=0;k<8;k++){
 
@@ -278,9 +299,7 @@ void UpdateLEDs(LEDArray *LED){
         index++;
         
       }
-
-    }
-    
+    }   
   }
 
   for(int i = LED->numLED*24; i < LED->numLED*24 + 50; i++){
@@ -288,11 +307,8 @@ void UpdateLEDs(LEDArray *LED){
     index++;
   }
 
-//TIM2->CCR1 = 58;
- // HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start_DMA(LED->htim,LED->Channel,&LED->PWMdata , (LED->numLED*24) +50);
+  HAL_TIM_PWM_Start_DMA(LED->htim,LED->Channel,LED->PWMdata , (LED->numLED*24) +50);
   PWM2_BUSY=1;
-  //heres the part where I actually do the thing
 
 }
 
