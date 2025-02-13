@@ -72,7 +72,9 @@
     uint8_t numLED;// = numLEDs;
     uint8_t LEDData[numLEDs][3];
     uint32_t PWMdata[(numLEDs*24) + 50];
-
+    TIM_HandleTypeDef *htim;
+    uint32_t Channel;
+    uint8_t PWM_BUSY;
 
   }LEDArray;
  
@@ -149,7 +151,9 @@ int main(void)
  
  
   Array1.numLED = numLEDs;
-
+  Array1.htim = &htim2;
+  Array1.Channel = TIM_CHANNEL_1;
+  Array1.PWM_BUSY = 0;
   LEDArray Array2;
 
 
@@ -168,7 +172,7 @@ int main(void)
     SetLED(&Array1,3,50,50,50);
     SetLED(&Array1,4,0,0,0);
 
-    if(!PWM2_BUSY){
+    if(!Array1.PWM_BUSY){
      UpdateLEDs(&Array1); 
     }
     HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
@@ -232,8 +236,8 @@ void SystemClock_Config(void)
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
  
-  HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
-  PWM2_BUSY=0;
+  HAL_TIM_PWM_Stop_DMA(&htim2, TIM_CHANNEL_1);
+  Array1.PWM_BUSY=0;
 }
 
 
@@ -286,7 +290,7 @@ void UpdateLEDs(LEDArray *LED){
 
 //TIM2->CCR1 = 58;
  // HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_1);
-  HAL_TIM_PWM_Start_DMA(&htim2,TIM_CHANNEL_1,&LED->PWMdata , (LED->numLED*24) +50);
+  HAL_TIM_PWM_Start_DMA(LED->htim,LED->Channel,&LED->PWMdata , (LED->numLED*24) +50);
   PWM2_BUSY=1;
   //heres the part where I actually do the thing
 
