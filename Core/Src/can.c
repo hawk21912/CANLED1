@@ -57,19 +57,16 @@ void MX_CAN_Init(void)
     CAN_FilterTypeDef canfilterconfig;
 
   canfilterconfig.FilterActivation = CAN_FILTER_ENABLE;
-  canfilterconfig.FilterBank = 1;  // which filter bank to use from the assigned ones
+  canfilterconfig.FilterBank = 0;  // which filter bank to use from the assigned ones
   canfilterconfig.FilterFIFOAssignment = CAN_FILTER_FIFO0;
-  canfilterconfig.FilterIdHigh = 0x7FF; 0x103<<5;
+  canfilterconfig.FilterIdHigh = 0;//0x446<<5;
   canfilterconfig.FilterIdLow = 0;
-  canfilterconfig.FilterMaskIdHigh =0x7FF;// 0x103<<5;
+  canfilterconfig.FilterMaskIdHigh =0;//0x446<<5;
   canfilterconfig.FilterMaskIdLow = 0x0000;
   canfilterconfig.FilterMode = CAN_FILTERMODE_IDMASK;
   canfilterconfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  canfilterconfig.SlaveStartFilterBank = 20;  // how many filters to assign to the CAN1 (master can)
 
   HAL_CAN_ConfigFilter(&hcan, &canfilterconfig);
-
-
   /* USER CODE END CAN_Init 2 */
 
 }

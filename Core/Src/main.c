@@ -140,6 +140,7 @@ int main(void)
 
   HAL_Delay(500);
   HAL_CAN_Start(&hcan);
+  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -178,13 +179,10 @@ int main(void)
     SetLED(&Array1,4,0,0,0);*/
     ShiftLED(&Array1,1);
     UpdateLEDs(&Array1);
-
-
-
    }
       
   
-    HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
+    
     HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox);
 
     /* USER CODE END WHILE */
@@ -330,6 +328,17 @@ void UpdateLEDs(LEDArray *LED){
   HAL_TIM_PWM_Start_DMA(LED->htim,LED->Channel,LED->PWMdata , (LED->numLED*24) +50);
   LED->PWM_BUSY=1;
 
+}
+
+
+CAN_RxHeaderTypeDef   RxHeader;
+uint8_t               RxData[8];
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
+{
+ HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+ HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
+  
 }
 
 /* USER CODE END 4 */
