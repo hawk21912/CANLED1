@@ -22,7 +22,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "build/Release/CMakeFiles/3.28.1/CMakeSystem.cmake"
+			"path" : "build/MinSizeRel/CMakeFiles/3.28.1/CMakeSystem.cmake"
 		},
 		{
 			"path" : "cmake/gcc-arm-none-eabi.cmake"
@@ -514,7 +514,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "build/Release/CMakeFiles/3.28.1/CMakeCCompiler.cmake"
+			"path" : "build/MinSizeRel/CMakeFiles/3.28.1/CMakeCCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -553,7 +553,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "build/Release/CMakeFiles/3.28.1/CMakeASMCompiler.cmake"
+			"path" : "build/MinSizeRel/CMakeFiles/3.28.1/CMakeASMCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -1092,7 +1092,7 @@
 		},
 		{
 			"isGenerated" : true,
-			"path" : "build/Release/CMakeFiles/3.28.1/CMakeCXXCompiler.cmake"
+			"path" : "build/MinSizeRel/CMakeFiles/3.28.1/CMakeCXXCompiler.cmake"
 		},
 		{
 			"isCMake" : true,
@@ -1151,7 +1151,7 @@
 	"kind" : "cmakeFiles",
 	"paths" : 
 	{
-		"build" : "/home/joshua/Documents/STM32projects/CANLED1/build/Release",
+		"build" : "/home/joshua/Documents/STM32projects/CANLED1/build/MinSizeRel",
 		"source" : "/home/joshua/Documents/STM32projects/CANLED1"
 	},
 	"version" : 
