@@ -141,15 +141,16 @@ typedef struct
 
 
  // variables for LED
-#define numArrays 2
-#define numLEDs 53
+#define numArrays 1
+#define numLEDs 367
 
-// so far max is 368  numArrays*numLeds I NEEED MORE RAM
+// so far max is 367  numArrays*numLeds I NEEED MORE RAM I wouldnt do more than 300 
  typedef struct{
 
   uint8_t numLED;// = numLEDs;
-  uint8_t *LEDData;
-  uint8_t *PWMdata;
+  uint8_t LEDData[numLEDs*3];
+  uint8_t PWMdata[numLEDs*3*8 + 50];
+
   TIM_HandleTypeDef *htim;
   uint32_t Channel;
   uint8_t PWM_BUSY;
@@ -237,6 +238,7 @@ int main(void)
   while (1)
   {
 
+  /*
     if(CANmsgReady == 1)
     {
       ProcessCANMessage();
@@ -254,7 +256,7 @@ int main(void)
         switch (ARY.Function)
         {
           case DEMO:
-            /* code */
+            
             break;
           
           case MANUAL:
@@ -285,13 +287,15 @@ int main(void)
     
 
   }
+
+  */
     HAL_Delay(34);
 
-  /* if(!Array[1].PWM_BUSY)
+   if(!Array[1].PWM_BUSY)
    {
     ShiftLED(&Array[1],-1);
     UpdateLEDs(&Array[1]);
-   }*/
+   }
       
 
     /* USER CODE END WHILE */
@@ -361,9 +365,7 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t 
 {
 
   LED->numLED = Length;
-  LED->LEDData = malloc(LED->numLED*3*sizeof(uint8_t));
-  memset(LED->LEDData,0,LED->numLED*3*(sizeof(uint8_t)));
-  LED->PWMdata = malloc(LED->numLED*24*sizeof(uint8_t));
+
   LED->htim = htim;
   LED->Channel = Channel;
   LED->PWM_BUSY = 0;
