@@ -92,7 +92,7 @@ typedef enum
   MANUAL,
   REACTIVE
 } FunctionStates;
-
+#define ALL_ARRAYS 7
 
 
 typedef struct 
@@ -141,8 +141,8 @@ typedef struct
 
 
  // variables for LED
-
-#define numLEDs 5
+#define numArrays 2
+#define numLEDs 25
  typedef struct{
 
   uint8_t numLED;// = numLEDs;
@@ -153,7 +153,7 @@ typedef struct
   uint8_t PWM_BUSY;
 
   }LEDArray;//*/
-LEDArray Array[2];
+LEDArray Array[numArrays];
 
   
 /* USER CODE END PV */
@@ -171,7 +171,7 @@ void ProcessCANMessage();
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-LEDArray Array[2];
+
 
 /* USER CODE END 0 */
 
@@ -223,16 +223,14 @@ int main(void)
 
   
   //MASTER[1] 
+  initLEDArray(&Array[0],numLEDs,&htim1,TIM_CHANNEL_1);
   initLEDArray(&Array[1],numLEDs,&htim2,TIM_CHANNEL_1);
+  
 
     SetLED(&Array[1],0,50,0,0);
-    SetLED(&Array[1],1,0,50,0);
-    SetLED(&Array[1],2,0,0,50);
-    SetLED(&Array[1],3,50,50,50);
-    SetLED(&Array[1],4,0,0,0);//*/
     UpdateLEDs(&Array[1]);
 
-    
+  ARY.Selection =1;
   while (1)
   {
 
@@ -241,47 +239,61 @@ int main(void)
       ProcessCANMessage();
     }
 
-    if(ARY.Enable == 1)
+
+  for(int i = 0; i<numArrays;i++)
+  {
+
+    if(ARY.Selection == i || ARY.Selection == ALL_ARRAYS)
     {
-     switch (ARY.Function)
-     {
-     case DEMO:
-      /* code */
-      break;
-     
-     case MANUAL:
-
-      break;
-
-     case REACTIVE:
-
-      break;
-
-     default:
-      break;
-     }
-
-    }
-    else 
-    {
-      if(ARY.Selection == 0)
-      {
-        //set to 0;
-      }
-      else if(ARY.Selection ==1)
-      {
-
-      }
-    }
-
-
-    HAL_Delay(250);
   
-   if(!Array[1].PWM_BUSY)
+      if(ARY.Enable == 1)
+      {
+        switch (ARY.Function)
+        {
+          case DEMO:
+            /* code */
+            break;
+          
+          case MANUAL:
+
+            break;
+
+          case REACTIVE:
+
+            break;
+
+          default:
+            break;
+      }
+
+      }
+      else 
+      {
+        
+      }
+
+      if(!Array[i].PWM_BUSY)
+    {
+      ShiftLED(&Array[i],-1);
+      UpdateLEDs(&Array[i]);
+   }
+    }
+
+    
+
+  }
+    HAL_Delay(34);
+  
+  if(!Array[1].PWM_BUSY)
    {
-    ShiftLED(&Array[1],1);
+    ShiftLED(&Array[1],-1);
     UpdateLEDs(&Array[1]);
    }
+  /* if(!Array[1].PWM_BUSY)
+   {
+    ShiftLED(&Array[1],-1);
+    UpdateLEDs(&Array[1]);
+   }*/
       
 
     /* USER CODE END WHILE */
@@ -352,6 +364,7 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t 
 
   LED->numLED = Length;
   LED->LEDData = malloc(LED->numLED*3*sizeof(uint8_t));
+  memset(LED->LEDData,0,LED->numLED*3*(sizeof(uint8_t)));
   LED->PWMdata = malloc(LED->numLED*24*sizeof(uint32_t));
   LED->htim = htim;
   LED->Channel = Channel;
