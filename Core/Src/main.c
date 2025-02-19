@@ -48,33 +48,112 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
- CAN_TxHeaderTypeDef   TxHeader;
-  uint8_t               TxData[8];
-  uint32_t              TxMailbox;
 
-  
-  const uint32_t WS2812_PWM_ONE_PER  = 66;
-  const uint32_t WS2812_PWM_ZERO_PER = 33;
+uint8_t               CANmsgReady;
+CAN_RxHeaderTypeDef   RxHeader;
+uint8_t               RxData[8];
 
-  uint32_t WS2812_PWM_ONE;  
-  uint32_t WS2812_PWM_ZERO;
-  
+typedef struct 
+{
+   uint8_t Selection;
+   uint8_t Enable;
+   uint8_t Function;
+   uint8_t Shift;
+   uint8_t Index; 
+   uint8_t R;
+   uint8_t G;
+   uint8_t B;
+   uint8_t Delay;   
+   uint8_t Mult;
+
+}ArrayConfigTypedef;
+ ArrayConfigTypedef ARY;
+
+
+#define ArrayConfig 0x0AFF0001
+/*  Start bit ,  Signals   , len, byte 
+ *  0 , Array Selection    , 3  , 1
+ *  1 , Enable array       , 1  , 1
+ *  2 , function           , 2  , 1 // demo, manual, reactive
+ *  6 , shfit/sine         , 2  , 1        
+ *  8 , array index        , 8  , 2
+ *  16, Red value          , 8  , 3
+ *  24, green value        , 8  , 4
+ *  32, blue value         , 8  , 5
+ *  40, delay              , 8  , 6 
+ *  48, delay multiplier   , 4  , 7 delay = delay*multiplier only used for shift/sin settings
+ *  
+ *    
+ * 
+ */ 
+typedef enum
+{
+  DEMO,
+  MANUAL,
+  REACTIVE
+} FunctionStates;
+
+
+
+typedef struct 
+{
+
+  uint32_t time; 
+  uint8_t  info; 
+  uint8_t  replay;
+  uint16_t match;
+  uint8_t  msgRec;
+
+}FRC_HEARTBBEAT_TypeDef;
+ FRC_HEARTBBEAT_TypeDef FRC;
+#define FRC_HEARTBBEAT 0x01011840
+/*  Start bit ,  Signals    , len, byte 
+ *  0 , Time of day hours  , 5 , 1
+ *  5 , time of dat minutes, 6 , 1-2
+ *  11, time of dat seconds, 6,  2-3
+ *  17, time of day day    , 5 , 3
+ *  22, time of day month  , 4 , 3-4
+ *  26, time of day year   , 6 , 4
+ *  32, tournament type    , 3 , 5 
+ *  35, system watchdog    , 1 , 5  
+ *  36, test mode          , 1 , 5
+ *  37, Autonomus Mode     , 1 , 5 
+ *  38, Enabled            , 1 , 5
+ *  39, Red alliance       , 1 , 5
+ *  40, Replay number      , 6 , 6
+ *  46, match number       , 10, 6-7
+ *  56, match time         , 8 , 8
+ * 
+ * vars
+ *  uint32_t time   = bytes[1:4]
+ *  uint8_t  info   = bytes[5:5]
+ *  uint8_t  replay = bytes[6:6] //no way we care if there are more than 255 matches 
+ *  uint16_t match  = bytes[7:8]
+ */
+
+
+#define WS2812_PWM_ONE_PER   66
+#define WS2812_PWM_ZERO_PER  33
+
+#define WS2812_PWM_ONE   WS2812_PWM_ONE_PER*TIM1->ARR/100
+#define WS2812_PWM_ZERO  WS2812_PWM_ZERO_PER*TIM1->ARR/100
+
+
 
  // variables for LED
 
-  #define numLEDs 5
+#define numLEDs 5
  typedef struct{
 
-    uint8_t numLED;// = numLEDs;
-    uint8_t *LEDData;
-    uint32_t *PWMdata;
-    TIM_HandleTypeDef *htim;
-    uint32_t Channel;
-    uint8_t PWM_BUSY;
+  uint8_t numLED;// = numLEDs;
+  uint8_t *LEDData;
+  uint32_t *PWMdata;
+  TIM_HandleTypeDef *htim;
+  uint32_t Channel;
+  uint8_t PWM_BUSY;
 
   }LEDArray;//*/
-  LEDArray Array1;
-
+LEDArray Array[2];
 
   
 /* USER CODE END PV */
@@ -82,14 +161,17 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+
 void UpdateLEDs(LEDArray *LED);
 void SetLED(LEDArray *LED,uint8_t pos, uint8_t R,uint8_t G, uint8_t B);
 void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t Channel);
 void ShiftLED(LEDArray *LED,int sft);
+void ProcessCANMessage();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+LEDArray Array[2];
 
 /* USER CODE END 0 */
 
@@ -129,13 +211,6 @@ int main(void)
   MX_CAN_Init();
   MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  TxHeader.IDE = CAN_ID_STD;
-  TxHeader.StdId = 0x446;
-  TxHeader.RTR = CAN_RTR_DATA;
-  TxHeader.DLC = 2;
-
-  TxData[0] = 50;  
-  TxData[1] = 0xAA;
 
 
   HAL_Delay(500);
@@ -146,44 +221,68 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-  WS2812_PWM_ONE  = WS2812_PWM_ONE_PER*TIM1->ARR/100;
-  WS2812_PWM_ZERO = WS2812_PWM_ZERO_PER*TIM1->ARR/100;
- 
-  initLEDArray(&Array1,numLEDs,&htim2,TIM_CHANNEL_1);
+  
+  //MASTER[1] 
+  initLEDArray(&Array[1],numLEDs,&htim2,TIM_CHANNEL_1);
 
-  /*wd SetLED(&Array1,0,2,1,3);
-    SetLED(&Array1,1,5,4,6);
-    SetLED(&Array1,2,8,7,9);
-    SetLED(&Array1,3,11,10,12);
-    SetLED(&Array1,4,14,13,15);//*/
+    SetLED(&Array[1],0,50,0,0);
+    SetLED(&Array[1],1,0,50,0);
+    SetLED(&Array[1],2,0,0,50);
+    SetLED(&Array[1],3,50,50,50);
+    SetLED(&Array[1],4,0,0,0);//*/
+    UpdateLEDs(&Array[1]);
 
- SetLED(&Array1,0,50,0,0);
-    SetLED(&Array1,1,0,50,0);
-    SetLED(&Array1,2,0,0,50);
-    SetLED(&Array1,3,50,50,50);
-    SetLED(&Array1,4,0,0,0);//*/
-    UpdateLEDs(&Array1);
-
-    int shift = 1;
+    
   while (1)
   {
 
+    if(CANmsgReady == 1)
+    {
+      ProcessCANMessage();
+    }
+
+    if(ARY.Enable == 1)
+    {
+     switch (ARY.Function)
+     {
+     case DEMO:
+      /* code */
+      break;
+     
+     case MANUAL:
+
+      break;
+
+     case REACTIVE:
+
+      break;
+
+     default:
+      break;
+     }
+
+    }
+    else 
+    {
+      if(ARY.Selection == 0)
+      {
+        //set to 0;
+      }
+      else if(ARY.Selection ==1)
+      {
+
+      }
+    }
+
+
     HAL_Delay(250);
   
-   if(!Array1.PWM_BUSY)
+   if(!Array[1].PWM_BUSY)
    {
-    /*SetLED(&Array1,0,255,0,0);
-    SetLED(&Array1,1,0,50,0);
-    SetLED(&Array1,2,0,0,50);
-    SetLED(&Array1,3,50,50,50);
-    SetLED(&Array1,4,0,0,0);*/
-    ShiftLED(&Array1,1);
-    UpdateLEDs(&Array1);
+    ShiftLED(&Array[1],1);
+    UpdateLEDs(&Array[1]);
    }
       
-  
-    
-    HAL_CAN_AddTxMessage(&hcan, &TxHeader, TxData, &TxMailbox);
 
     /* USER CODE END WHILE */
 
@@ -244,7 +343,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
 
   HAL_TIM_PWM_Stop_DMA(&htim2, TIM_CHANNEL_1);
-  Array1.PWM_BUSY=0;
+  Array[1].PWM_BUSY=0;
 
 }
 
@@ -252,8 +351,8 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t 
 {
 
   LED->numLED = Length;
-  LED->LEDData = malloc(Array1.numLED*3*sizeof(uint8_t));
-  LED->PWMdata = malloc(Array1.numLED*24*sizeof(uint32_t));
+  LED->LEDData = malloc(LED->numLED*3*sizeof(uint8_t));
+  LED->PWMdata = malloc(LED->numLED*24*sizeof(uint32_t));
   LED->htim = htim;
   LED->Channel = Channel;
   LED->PWM_BUSY = 0;
@@ -297,7 +396,9 @@ void SetLED(LEDArray *LED,uint8_t pos, uint8_t R,uint8_t G, uint8_t B)
   }
 
 }
-void UpdateLEDs(LEDArray *LED){
+
+void UpdateLEDs(LEDArray *LED)
+{
 
   uint16_t bitState=0;
   uint16_t index=0;
@@ -330,16 +431,52 @@ void UpdateLEDs(LEDArray *LED){
 
 }
 
-
-CAN_RxHeaderTypeDef   RxHeader;
-uint8_t               RxData[8];
-
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
  HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
- HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);
-  
+ HAL_GPIO_TogglePin(LD3_GPIO_Port,LD3_Pin);  
+ CANmsgReady = 1;
 }
+
+void ProcessCANMessage()
+{
+
+switch (RxHeader.ExtId)
+{
+case FRC_HEARTBBEAT:
+
+  FRC.time   = (RxData[3]<<24) + (RxData[2]<<16) + (RxData[1]<<8) + (RxData[0]);
+  FRC.info   = RxData[4];
+  FRC.replay = RxData[5];
+  FRC.match  = (RxData[7]<<8)  + RxData[7];
+
+  /* code */
+  break;
+
+case ArrayConfig:
+
+  ARY.Selection = (RxData[0] & 0b00000111)     ;
+  ARY.Enable    = (RxData[0] & 0b00001000) >> 4;
+  ARY.Function  = (RxData[0] & 0b00110000) >> 5;
+  ARY.Shift     = (RxData[0] & 0b11000000) >> 6; 
+  ARY.Index     = RxData[1];
+  ARY.R         = RxData[2];
+  ARY.G         = RxData[3];
+  ARY.B         = RxData[4];
+  ARY.Delay     = RxData[5];
+  ARY.Mult      = RxData[6] & 0b00001111; 
+  
+  break;
+
+default:
+  break;
+
+
+}
+
+CANmsgReady = 0;
+}
+
 
 /* USER CODE END 4 */
 
