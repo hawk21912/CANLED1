@@ -74,7 +74,7 @@ typedef struct
 /*  Start bit ,  Signals   , len, byte 
  *  0 , Array Selection    , 3  , 1
  *  1 , Enable array       , 1  , 1
- *  2 , function           , 2  , 1 // demo, manual, reactive
+ *  2 , function           , 2  , 1 // demo1,demo2, manual, reactive
  *  6 , shfit/sine         , 2  , 1        
  *  8 , array index        , 8  , 2
  *  16, Red value          , 8  , 3
@@ -88,7 +88,8 @@ typedef struct
  */ 
 typedef enum
 {
-  DEMO,
+  DEMO1,
+  DEMO2,
   MANUAL,
   REACTIVE
 } FunctionStates;
@@ -142,7 +143,7 @@ typedef struct
 
  // variables for LED
 #define numArrays 1
-#define numLEDs 367
+#define numLEDs 120
 
 // so far max is 367  numArrays*numLeds I NEEED MORE RAM I wouldnt do more than 300 
  typedef struct{
@@ -170,6 +171,9 @@ void SetLED(LEDArray *LED,uint8_t pos, uint8_t R,uint8_t G, uint8_t B);
 void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t Channel);
 void ShiftLED(LEDArray *LED,int sft);
 void ProcessCANMessage();
+int HSVtoRGB(int H,int S, int V);
+void initDemo1(LEDArray *LED);
+void demo2(LEDArray *LED);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -227,19 +231,30 @@ int main(void)
 
   
   //MASTER[1] 
-  initLEDArray(&Array[0],numLEDs,&htim1,TIM_CHANNEL_1);
-  initLEDArray(&Array[1],numLEDs,&htim2,TIM_CHANNEL_1);
+  //initLEDArray(&Array[0],numLEDs,&htim1,TIM_CHANNEL_1);
+  initLEDArray(&Array[0],numLEDs,&htim2,TIM_CHANNEL_1);
   
 
-  SetLED(&Array[1],0,50,0,0);
-  UpdateLEDs(&Array[1]);
+  for (int i=0;i<50;i++){
+    SetLED(&Array[1],i,i,0,0);
+    
+  }
+   
 
-  ARY.Selection =1;
+  UpdateLEDs(&Array[0]);
+
+  
+
+  ARY.Selection =0;
+  ARY.Enable =1;
+  int FunctionLast =-1;
+   ARY.Function = DEMO2;
+
   while (1)
   {
 
-  /*
-    if(CANmsgReady == 1)
+ 
+  if(CANmsgReady == 1)
     {
       ProcessCANMessage();
     }
@@ -255,15 +270,41 @@ int main(void)
       {
         switch (ARY.Function)
         {
-          case DEMO:
+          case DEMO1:
             
+              if(FunctionLast != DEMO1)
+              {
+                initDemo1(&Array[i]);
+              }
+              else
+              {
+                ShiftLED(&Array[i],-1);
+              }
             break;
           
+          case DEMO2:
+            
+                
+              demo2(&Array[i]);
+
+              //ShiftLED(&Array[i],-1);
+            break;
+
           case MANUAL:
 
+              SetLED(&Array[i],ARY.Index,ARY.R,ARY.G,ARY.B);
             break;
 
           case REACTIVE:
+
+              if((FRC.match & 0b10000000) != 0)
+              {
+                //red alliance
+              }
+              else
+              {
+                //blue alliance
+              }
 
             break;
 
@@ -271,6 +312,7 @@ int main(void)
             break;
       }
 
+        FunctionLast= ARY.Function;
       }
       else 
       {
@@ -278,33 +320,21 @@ int main(void)
       }
 
       if(!Array[i].PWM_BUSY)
-    {
-      ShiftLED(&Array[i],-1);
+      {
+      
       UpdateLEDs(&Array[i]);
-   }
+      }
     }
 
-    
-
   }
-
-  */
-    HAL_Delay(34);
-
-   if(!Array[1].PWM_BUSY)
-   {
-    ShiftLED(&Array[1],-1);
-    UpdateLEDs(&Array[1]);
-   }
-      
-
+    HAL_Delay(17);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
-}
 
+}
 /**
   * @brief System Clock Configuration
   * @retval None
@@ -357,7 +387,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
 
   HAL_TIM_PWM_Stop_DMA(&htim2, TIM_CHANNEL_1);
-  Array[1].PWM_BUSY=0;
+  Array[0].PWM_BUSY=0;
 
 }
 
@@ -365,7 +395,6 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t 
 {
 
   LED->numLED = Length;
-
   LED->htim = htim;
   LED->Channel = Channel;
   LED->PWM_BUSY = 0;
@@ -420,7 +449,7 @@ void UpdateLEDs(LEDArray *LED)
   {  
     bitState = LED->LEDData[i];       
 
-    for(int k=0;k<8;k++){
+    for(int k=7;k>=0;k--){
 
       if((bitState>> k) & 1)
       {
@@ -442,6 +471,99 @@ void UpdateLEDs(LEDArray *LED)
   HAL_TIM_PWM_Start_DMA(LED->htim,LED->Channel,LED->PWMdata , (LED->numLED*24) +50);
   LED->PWM_BUSY=1;
 
+}
+
+#define factor 255
+
+int HSVtoRGB(int H,int S, int V)
+{
+
+    int C = S*V/factor;
+    int m = (V-C);
+    int hp = (factor*H/60);
+    int X = (C*(factor-abs(hp%(2*factor) - factor)))/factor;
+    hp/=factor;
+
+    int r=0;
+    int g=0;
+    int b=0;
+
+    if( 0<= hp && hp < 1)
+    {
+        r=C;
+        g=X;
+    }
+    else if( 1<= hp && hp < 2)
+    {
+        r=X;
+        g=C;
+    }
+    else if( 2<= hp && hp < 3)
+    {
+        g=C;
+        b=X;
+    }
+    else if( 3<= hp && hp < 4)
+    {
+        g=C;
+        b=X;
+    }
+    else if( 4<= hp && hp < 5)
+    {
+        r=X;
+        b=C;
+    }
+    else if( 5<= hp && hp < 6)
+    {
+        r=C;
+        b=X;
+    }
+
+    r=((r+m));
+    g=((g+m)); 
+    b=((b+m));
+
+    int rgb = ((0xFF & b)<<16) + ((0xFF&g)<<8) + r;
+ 
+    //printf("HSV %i %i %i |RGB %i %i %i | 0x%X \n",H,S,V,r,g,b,rgb);
+    return(rgb);
+}
+
+void initDemo1(LEDArray *LED)
+{
+  
+  int AngleDiff = 360/numLEDs;
+  uint32_t rgb =0;
+
+  for(int i = 0; i < LED->numLED;i++)
+  {
+
+    rgb = HSVtoRGB(i*AngleDiff,255,30);
+    SetLED(LED,i, rgb & 0XFF, (rgb & 0xFF00)>>8, (rgb & 0xFF0000)>>16 );
+
+  }
+
+}
+
+
+
+void demo2(LEDArray *LED)
+{
+  static uint16_t demo2angle=0;
+  uint32_t rgb=0;
+
+  if(demo2angle >=360)
+  {
+    demo2angle=0;
+  }
+
+  rgb= HSVtoRGB(demo2angle,255,30);
+
+  for(int i = 0;i<numLEDs;i++){
+     SetLED(LED,i, rgb & 0XFF, (rgb & 0xFF00)>>8, (rgb & 0xFF0000)>>16 );
+  }
+
+  demo2angle++;
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
