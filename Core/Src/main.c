@@ -67,7 +67,7 @@ typedef struct
    uint8_t Mult;
 
 }ArrayConfigTypedef;
- ArrayConfigTypedef ARY;
+ ArrayConfigTypedef CFG;
 
 
 #define ArrayConfig 0x0AFF0001
@@ -107,7 +107,7 @@ typedef struct
 
 }FRC_HEARTBBEAT_TypeDef;
  FRC_HEARTBBEAT_TypeDef FRC;
-#define FRC_HEARTBBEAT 0x01011840
+#define FRC_HEARTBBEAT 0x01011840  // for waveforms use 040 11840 not sure why I cant just enter the full ext id but go off ig
 /*  Start bit ,  Signals    , len, byte 
  *  0 , Time of day hours  , 5 , 1
  *  5 , time of dat minutes, 6 , 1-2
@@ -172,8 +172,10 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim,uint32_t 
 void ShiftLED(LEDArray *LED,int sft);
 void ProcessCANMessage();
 int HSVtoRGB(int H,int S, int V);
-void initDemo1(LEDArray *LED);
-void demo2(LEDArray *LED);
+void Demo1(LEDArray *LED,uint8_t PreviousFunciton);
+void Demo2(LEDArray *LED);
+void FRCHeartBeatReactive(LEDArray *LED);
+void SineWave(LEDArray *LED,  uint8_t col, float A, float offset );
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -219,36 +221,24 @@ int main(void)
   MX_USART1_UART_Init();
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
-
-
-  HAL_Delay(500);
-  HAL_CAN_Start(&hcan);
-  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
+  
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_CAN_Start(&hcan);
+  HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
 
-  
-  //MASTER[1] 
   //initLEDArray(&Array[0],numLEDs,&htim1,TIM_CHANNEL_1);
   initLEDArray(&Array[0],numLEDs,&htim2,TIM_CHANNEL_1);
   
+  CFG.Selection =0;
+  CFG.Enable =1;
+  CFG.Function = REACTIVE;
 
-  for (int i=0;i<50;i++){
-    SetLED(&Array[1],i,i,0,0);
-    
-  }
-   
+  FRC.match = 0x0;//FF;
 
-  UpdateLEDs(&Array[0]);
-
-  
-
-  ARY.Selection =0;
-  ARY.Enable =1;
   int FunctionLast =-1;
-   ARY.Function = DEMO2;
 
   while (1)
   {
@@ -263,65 +253,43 @@ int main(void)
   for(int i = 0; i<numArrays;i++)
   {
 
-    if(ARY.Selection == i || ARY.Selection == ALL_ARRAYS)
+    if(CFG.Selection == i || CFG.Selection == ALL_ARRAYS)
     {
   
-      if(ARY.Enable == 1)
+      if(CFG.Enable == 1)
       {
-        switch (ARY.Function)
+        switch (CFG.Function)
         {
-          case DEMO1:
-            
-              if(FunctionLast != DEMO1)
-              {
-                initDemo1(&Array[i]);
-              }
-              else
-              {
-                ShiftLED(&Array[i],-1);
-              }
+          case DEMO1:           
+            Demo1(&Array[i],FunctionLast);
             break;
           
-          case DEMO2:
-            
-                
-              demo2(&Array[i]);
-
-              //ShiftLED(&Array[i],-1);
+          case DEMO2:                           
+            Demo2(&Array[i]);            
             break;
 
           case MANUAL:
-
-              SetLED(&Array[i],ARY.Index,ARY.R,ARY.G,ARY.B);
+            SetLED(&Array[i],CFG.Index,CFG.R,CFG.G,CFG.B);
             break;
 
           case REACTIVE:
-
-              if((FRC.match & 0b10000000) != 0)
-              {
-                //red alliance
-              }
-              else
-              {
-                //blue alliance
-              }
-
+            FRCHeartBeatReactive(&Array[i]);
             break;
 
           default:
             break;
       }
 
-        FunctionLast= ARY.Function;
+        FunctionLast = CFG.Function;
       }
       else 
       {
-        
+        //Turn off All LEDs when the array isnt enabled by setting LED Data to 0
+        memset(Array[i].LEDData, 0, sizeof(Array[i].LEDData));
       }
 
       if(!Array[i].PWM_BUSY)
       {
-      
       UpdateLEDs(&Array[i]);
       }
     }
@@ -473,10 +441,9 @@ void UpdateLEDs(LEDArray *LED)
 
 }
 
-#define factor 255
-
 int HSVtoRGB(int H,int S, int V)
 {
+    const int factor = 255;
 
     int C = S*V/factor;
     int m = (V-C);
@@ -525,29 +492,33 @@ int HSVtoRGB(int H,int S, int V)
 
     int rgb = ((0xFF & b)<<16) + ((0xFF&g)<<8) + r;
  
-    //printf("HSV %i %i %i |RGB %i %i %i | 0x%X \n",H,S,V,r,g,b,rgb);
     return(rgb);
 }
 
-void initDemo1(LEDArray *LED)
+void Demo1(LEDArray *LED,uint8_t PreviousFunciton)
 {
   
   int AngleDiff = 360/numLEDs;
   uint32_t rgb =0;
 
-  for(int i = 0; i < LED->numLED;i++)
-  {
+   if(PreviousFunciton != DEMO1)
+    {
+      for(int i = 0; i < LED->numLED;i++)
+      {
+      rgb = HSVtoRGB(i*AngleDiff,255,30);
+      SetLED(LED,i, rgb & 0XFF, (rgb & 0xFF00)>>8, (rgb & 0xFF0000)>>16 );
+      }
 
-    rgb = HSVtoRGB(i*AngleDiff,255,30);
-    SetLED(LED,i, rgb & 0XFF, (rgb & 0xFF00)>>8, (rgb & 0xFF0000)>>16 );
+    }
+    else
+    {
+      ShiftLED(LED,-1);
+    }
 
-  }
 
 }
 
-
-
-void demo2(LEDArray *LED)
+void Demo2(LEDArray *LED)
 {
   static uint16_t demo2angle=0;
   uint32_t rgb=0;
@@ -564,6 +535,63 @@ void demo2(LEDArray *LED)
   }
 
   demo2angle++;
+}
+
+void SineWave(LEDArray *LED,  uint8_t col, float A, float offset )
+{
+
+
+  for(float i =0; i< (float) LED->numLED;i++)
+  {
+    float res= offset + A*sin(2*3.14f*i/ ((float) LED->numLED));
+
+    switch (col)
+    {
+    case 0://red
+      SetLED(LED,i,(uint8_t)res,0,0);
+      break;
+
+    case 1://green
+      SetLED(LED,i,0,(uint8_t)res,0);
+      break;
+
+    case 2://blue
+      SetLED(LED,i,0,0,(uint8_t)res);
+      break;
+
+    default:
+      break;
+    }
+  }
+
+}
+
+void FRCHeartBeatReactive(LEDArray *LED)
+{
+
+  static uint8_t PrevColor = -1;
+  uint8_t color = (FRC.info & 0b10000000);
+
+  if(PrevColor != color)
+  {
+
+    if(color == 0x80) //red alliance
+    {
+        SineWave(LED,0,50, 70);
+    } 
+    else if( color == 0) //blue alliance
+    {
+        SineWave(LED,2,50, 70);
+    }
+    
+  } else {
+
+    ShiftLED(LED,-1);
+  }
+
+
+  PrevColor = color;
+
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
@@ -590,16 +618,16 @@ case FRC_HEARTBBEAT:
 
 case ArrayConfig:
 
-  ARY.Selection = (RxData[0] & 0b00000111)     ;
-  ARY.Enable    = (RxData[0] & 0b00001000) >> 4;
-  ARY.Function  = (RxData[0] & 0b00110000) >> 5;
-  ARY.Shift     = (RxData[0] & 0b11000000) >> 6; 
-  ARY.Index     = RxData[1];
-  ARY.R         = RxData[2];
-  ARY.G         = RxData[3];
-  ARY.B         = RxData[4];
-  ARY.Delay     = RxData[5];
-  ARY.Mult      = RxData[6] & 0b00001111; 
+  CFG.Selection = (RxData[0] & 0b00000111)     ;
+  CFG.Enable    = (RxData[0] & 0b00001000) >> 4;
+  CFG.Function  = (RxData[0] & 0b00110000) >> 5;
+  CFG.Shift     = (RxData[0] & 0b11000000) >> 6; 
+  CFG.Index     = RxData[1];
+  CFG.R         = RxData[2];
+  CFG.G         = RxData[3];
+  CFG.B         = RxData[4];
+  CFG.Delay     = RxData[5];
+  CFG.Mult      = RxData[6] & 0b00001111; 
   
   break;
 
