@@ -58,7 +58,7 @@ typedef struct
    uint8_t Selection;
    uint8_t Enable;
    uint8_t Function;
-   uint8_t Shift;
+   int8_t Shift;
    uint8_t Index; 
    uint8_t R;
    uint8_t G;
@@ -143,7 +143,7 @@ typedef struct
 
  // variables for LED
 #define numArrays 2
-#define numLEDs 30
+#define numLEDs 180
 
 // so far max is 367  numArrays*numLeds I NEEED MORE RAM I wouldnt do more than 300 
  typedef struct{
@@ -151,7 +151,7 @@ typedef struct
   uint8_t numLED;// = numLEDs;
   uint8_t LEDData[numLEDs*3];
   uint8_t PWMdata[numLEDs*3*8 + 50];
-
+  uint8_t Enabled;
   TIM_HandleTypeDef *htim;
   uint32_t Channel;
   uint8_t PWM_BUSY;
@@ -232,11 +232,15 @@ int main(void)
   initLEDArray(&Array[0],numLEDs,&htim2,TIM_CHANNEL_1);
   initLEDArray(&Array[1],numLEDs,&htim1,TIM_CHANNEL_1);
 
-  CFG.Selection =ALL_ARRAYS;
-  CFG.Enable =1;
-  CFG.Function = DEMO1;
 
   FRC.match = 0x0;//FF;
+
+  CFG.Selection = ALL_ARRAYS;    
+  CFG.Enable    = 1;
+  CFG.Function  = DEMO1;
+  CFG.Delay     = 17;
+  CFG.Mult      = 1;
+
 
   int FunctionLast =-1;
 
@@ -250,13 +254,16 @@ int main(void)
     }
 
 
+  
   for(int i = 0; i<numArrays;i++)
   {
 
     if(CFG.Selection == i || CFG.Selection == ALL_ARRAYS)
     {
   
-      if(CFG.Enable == 1)
+      Array[i].Enabled = CFG.Enable;
+
+      if(Array[i].Enabled == 1)
       {
         switch (CFG.Function)
         {
@@ -270,6 +277,7 @@ int main(void)
 
           case MANUAL:
             SetLED(&Array[i],CFG.Index,CFG.R,CFG.G,CFG.B);
+            ShiftLED(&Array[i],CFG.Shift);
             break;
 
           case REACTIVE:
@@ -290,8 +298,6 @@ int main(void)
       memset(Array[i].LEDData, 0, sizeof(Array[i].LEDData));
     }
 
-
-     
       if(!Array[i].PWM_BUSY)
       {
         UpdateLEDs(&Array[i]);
@@ -300,7 +306,7 @@ int main(void)
   }
 
    FunctionLast = CFG.Function;
-    HAL_Delay(17);
+    HAL_Delay(CFG.Delay*CFG.Mult);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -400,6 +406,7 @@ void initLEDArray(LEDArray *LED,uint8_t Length,TIM_HandleTypeDef *htim, uint32_t
   LED->htim = htim;
   LED->Channel = Channel;
   LED->PWM_BUSY = 0;
+  LED->Enabled = 1;
 
 }
 
@@ -624,21 +631,39 @@ int HSVtoRGB(int H,int S, int V)
     return(rgb);
 }
 
+/** 
+ * Function Name 
+ *  Demo1
+ * 
+ * Parameters 
+ *  LEDarray *LED             | LED array to be modified
+ *  uint8_t Previous Function | previous state of the main while (ex DEMO1 DEMO2 Reactive )
+ * 
+ * Description 
+ *  State machine for the Demo1 Preset. If the previous function was not DEMO1 create a 
+ *  Rainbow wave with the whole LED array as one perioid. If the previous state is DEMO 1 
+ *  shift the wave once downward
+*/
+
 void Demo1(LEDArray *LED,uint8_t PreviousFunciton)
 {
   
-  int AngleDiff = 360/numLEDs;
+  int AngleDiff = 360/numLEDs; // delta HSV angle between each LED 
   uint32_t rgb =0;
 
+    //if the array has not been initalized for demo1
    if(PreviousFunciton != DEMO1)
     {
+      //for all LEDs
       for(int i = 0; i < LED->numLED;i++)
       {
+     //get and set HSV to RGB value for each LED in the array    
       rgb = HSVtoRGB(i*AngleDiff,255,30);
       SetLED(LED,i, rgb & 0XFF, (rgb & 0xFF00)>>8, (rgb & 0xFF0000)>>16 );
       }
 
     }
+    //shift LEDs
     else
     {
       ShiftLED(LED,-1);
@@ -699,7 +724,7 @@ void FRCHeartBeatReactive(LEDArray *LED)
 {
 
   static uint8_t PrevColor = -1;
-  uint8_t color = (FRC.info & 0b10000000);
+  uint8_t color = (FRC.info & 0b10000000 );
 
   if(PrevColor != color)
   {
