@@ -1,6 +1,12 @@
 [
 {
   "directory": "/home/joshua/Documents/STM32projects/CANLED1/build/Debug",
+  "command": "/opt/st/stm32cubeclt_1.15.1/GNU-tools-for-STM32/bin/arm-none-eabi-gcc -DDEBUG -DSTM32F303x8 -DUSE_HAL_DRIVER -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Core/Inc -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/STM32F3xx_HAL_Driver/Inc -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/CMSIS/Device/ST/STM32F3xx/Include -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/CMSIS/Include  -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -Wextra -Wpedantic -fdata-sections -ffunction-sections -O0 -g3 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -Wextra -Wpedantic -fdata-sections -ffunction-sections -O0 -g3 -g -std=gnu11 -o CMakeFiles/CANLED1.dir/Core/Src/WS2812.c.obj -c /home/joshua/Documents/STM32projects/CANLED1/Core/Src/WS2812.c",
+  "file": "/home/joshua/Documents/STM32projects/CANLED1/Core/Src/WS2812.c",
+  "output": "CMakeFiles/CANLED1.dir/Core/Src/WS2812.c.obj"
+},
+{
+  "directory": "/home/joshua/Documents/STM32projects/CANLED1/build/Debug",
   "command": "/opt/st/stm32cubeclt_1.15.1/GNU-tools-for-STM32/bin/arm-none-eabi-gcc -DDEBUG -DSTM32F303x8 -DUSE_HAL_DRIVER -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Core/Inc -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/STM32F3xx_HAL_Driver/Inc -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/STM32F3xx_HAL_Driver/Inc/Legacy -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/CMSIS/Device/ST/STM32F3xx/Include -I/home/joshua/Documents/STM32projects/CANLED1/cmake/stm32cubemx/../../Drivers/CMSIS/Include  -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -Wextra -Wpedantic -fdata-sections -ffunction-sections -O0 -g3 -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard  -Wall -Wextra -Wpedantic -fdata-sections -ffunction-sections -O0 -g3 -g -std=gnu11 -o CMakeFiles/CANLED1.dir/Core/Src/main.c.obj -c /home/joshua/Documents/STM32projects/CANLED1/Core/Src/main.c",
   "file": "/home/joshua/Documents/STM32projects/CANLED1/Core/Src/main.c",
   "output": "CMakeFiles/CANLED1.dir/Core/Src/main.c.obj"

@@ -11,7 +11,8 @@
 		"commands" : 
 		[
 			"add_executable",
-			"target_link_libraries"
+			"target_link_libraries",
+			"target_sources"
 		],
 		"files" : 
 		[
@@ -31,7 +32,13 @@
 			{
 				"command" : 1,
 				"file" : 0,
-				"line" : 64,
+				"line" : 69,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 50,
 				"parent" : 0
 			}
 		]
@@ -122,7 +129,8 @@
 				25,
 				26,
 				27,
-				28
+				28,
+				29
 			]
 		},
 		{
@@ -173,7 +181,7 @@
 			"language" : "ASM",
 			"sourceIndexes" : 
 			[
-				29
+				30
 			]
 		}
 	],
@@ -234,19 +242,26 @@
 				25,
 				26,
 				27,
-				28
+				28,
+				29
 			]
 		},
 		{
 			"name" : "",
 			"sourceIndexes" : 
 			[
-				29
+				30
 			]
 		}
 	],
 	"sources" : 
 	[
+		{
+			"backtrace" : 3,
+			"compileGroupIndex" : 0,
+			"path" : "Core/Src/WS2812.c",
+			"sourceGroupIndex" : 0
+		},
 		{
 			"backtrace" : 2,
 			"compileGroupIndex" : 0,
